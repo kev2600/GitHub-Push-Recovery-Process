@@ -1,15 +1,21 @@
 # 🔧 **GitHub Push Recovery Process (Deterministic, Reinstall‑Safe)**
 
+This workflow restores GitHub push access on **any machine**, after **any reinstall**, with **zero reliance on cached credentials, tokens, or keyrings**.  
+It is designed for users who regularly wipe their systems and require a **clean, reproducible, failure‑proof** authentication setup.
+
+---
+
 # 1️⃣ **Clear all broken or stale GitHub credentials**
 
 Fresh installs often inherit:
 
-- cached or no passwords  
-- expired tokens  or no tokens
+- cached or missing passwords  
+- expired or missing tokens  
 - GNOME keyring entries  
 - credential helper junk  
+- HTTPS authentication fallback  
 
-These must be wiped.
+All of this must be wiped before switching to SSH.
 
 ### **A. Clear Git’s credential cache**
 ```bash
@@ -29,13 +35,20 @@ EOF
 secret-tool clear service git host github.com
 ```
 
-This removes the old, invalid GitHub password that caused the push failure.
+### **D. Disable credential helpers globally**
+Prevents Git from silently re‑enabling HTTPS auth.
+
+```bash
+git config --global --unset credential.helper
+```
+
+This ensures Git never tries to use stale passwords or tokens again.
 
 ---
 
 # 2️⃣ **Generate a fresh SSH keypair**
 
-This avoids passwords, tokens, and keyring issues entirely.
+SSH keys avoid all HTTPS authentication issues.
 
 ```bash
 ssh-keygen -t ed25519 -C "your_email_here"
@@ -45,7 +58,7 @@ Press Enter for all prompts.
 
 This creates:
 
-- `~/.ssh/id_ed25519`
+- `~/.ssh/id_ed25519`  
 - `~/.ssh/id_ed25519.pub`
 
 ---
@@ -67,17 +80,34 @@ Show the key:
 cat ~/.ssh/id_ed25519.pub
 ```
 
-Copy → GitHub → Settings → SSH and GPG keys → **New SSH key**
-
+Copy → GitHub → Settings → **SSH and GPG keys** → New SSH key  
 Paste it.
 
 ---
 
-# 5️⃣ **Switch your repo from HTTPS → SSH**
+# 5️⃣ **Verify SSH authentication**
 
-This is critical.  
+This confirms the key works and GitHub recognizes it.
+
+```bash
+ssh -T git@github.com
+```
+
+Expected output:
+
+```
+Hi USERNAME! You've successfully authenticated, but GitHub does not provide shell access.
+```
+
+If you see this, SSH is fully functional.
+
+---
+
+# 6️⃣ **Switch your repo from HTTPS → SSH**
+
 HTTPS uses passwords/tokens.  
-SSH uses your key.
+SSH uses your key.  
+SSH is deterministic and survives reinstalls.
 
 Inside your repo:
 
@@ -99,7 +129,7 @@ origin  git@github.com:USERNAME/REPO.git (push)
 
 ---
 
-# 6️⃣ **Push normally**
+# 7️⃣ **Push normally**
 
 ```bash
 git push
@@ -108,28 +138,28 @@ git push
 No password.  
 No token.  
 No keyring.  
-No drift.
+No drift.  
+No failure points.
 
 ---
 
 # 🧩 **Why this process works every time**
-
-Because it eliminates every failure point:
 
 | Failure Source | Eliminated By |
 |----------------|---------------|
 | Cached password | Clearing credential cache |
 | GNOME keyring storing old credentials | `secret-tool clear` |
 | Expired GitHub PAT | SSH keys don’t expire |
-| HTTPS authentication | Switching to SSH |
+| HTTPS authentication fallback | Switching to SSH |
 | Machine reinstall | New keypair each time |
 | Drift between machines | Deterministic steps |
+| Credential helper interference | `git config --global --unset credential.helper` |
 
-This is the **lowest‑friction**, **lowest‑risk**, **most reproducible** workflow for someone who formats machines regularly.
+This workflow removes every variable that causes GitHub push failures.
 
 ---
 
-# 🧱 **The Minimal Reinstall Checklist (copy/paste)**
+# 🧱 **Minimal Reinstall Checklist (copy/paste)**
 
 ```
 # 1. Clear old credentials
@@ -139,6 +169,7 @@ protocol=https
 host=github.com
 EOF
 secret-tool clear service git host github.com
+git config --global --unset credential.helper
 
 # 2. Generate new SSH key
 ssh-keygen -t ed25519 -C "email"
@@ -149,10 +180,13 @@ ssh-add ~/.ssh/id_ed25519
 
 # 4. Add ~/.ssh/id_ed25519.pub to GitHub
 
-# 5. Switch repo to SSH
+# 5. Verify SSH works
+ssh -T git@github.com
+
+# 6. Switch repo to SSH
 git remote set-url origin git@github.com:USERNAME/REPO.git
 
-# 6. Push
+# 7. Push
 git push
 ```
 
