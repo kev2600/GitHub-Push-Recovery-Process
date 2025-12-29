@@ -1,11 +1,11 @@
 # 🔧 **GitHub Push Recovery Process (Deterministic, Reinstall‑Safe)**
 
-This workflow restores GitHub push access on **any machine**, after **any reinstall**, with **zero reliance on cached credentials, tokens, or keyrings**.  
-It is designed for users who regularly wipe their systems and require a **clean, reproducible, failure‑proof** authentication setup.
+A clean, reproducible workflow for restoring GitHub push access on **any machine**, after **any reinstall**, without relying on cached passwords, tokens, or GNOME keyring state.  
+This process eliminates every common failure mode and ensures Git always uses SSH.
 
 ---
 
-# 1️⃣ **Clear all broken or stale GitHub credentials**
+# 1️⃣ **Purge all stale GitHub authentication**
 
 Fresh installs often inherit:
 
@@ -13,16 +13,16 @@ Fresh installs often inherit:
 - expired or missing tokens  
 - GNOME keyring entries  
 - credential helper junk  
-- HTTPS authentication fallback  
+- HTTPS fallback behavior  
 
-All of this must be wiped before switching to SSH.
+All of this must be removed before switching to SSH.
 
 ### **A. Clear Git’s credential cache**
 ```bash
 git credential-cache exit
 ```
 
-### **B. Force Git to forget any stored GitHub credentials**
+### **B. Remove any stored GitHub credentials**
 ```bash
 git credential reject <<EOF
 protocol=https
@@ -30,25 +30,23 @@ host=github.com
 EOF
 ```
 
-### **C. Clear GNOME Keyring entries (Fedora uses this)**
+### **C. Clear GNOME Keyring entries (Fedora)**
 ```bash
 secret-tool clear service git host github.com
 ```
 
 ### **D. Disable credential helpers globally**
-Prevents Git from silently re‑enabling HTTPS auth.
+Prevents Git from silently re‑enabling HTTPS authentication.
 
 ```bash
 git config --global --unset credential.helper
 ```
 
-This ensures Git never tries to use stale passwords or tokens again.
-
 ---
 
 # 2️⃣ **Generate a fresh SSH keypair**
 
-SSH keys avoid all HTTPS authentication issues.
+SSH avoids passwords, tokens, and keyring issues entirely.
 
 ```bash
 ssh-keygen -t ed25519 -C "your_email_here"
@@ -143,7 +141,7 @@ No failure points.
 
 ---
 
-# 🧩 **Why this process works every time**
+# 🧩 **Why this process works**
 
 | Failure Source | Eliminated By |
 |----------------|---------------|
@@ -151,9 +149,9 @@ No failure points.
 | GNOME keyring storing old credentials | `secret-tool clear` |
 | Expired GitHub PAT | SSH keys don’t expire |
 | HTTPS authentication fallback | Switching to SSH |
+| Credential helper interference | `git config --global --unset credential.helper` |
 | Machine reinstall | New keypair each time |
 | Drift between machines | Deterministic steps |
-| Credential helper interference | `git config --global --unset credential.helper` |
 
 This workflow removes every variable that causes GitHub push failures.
 
